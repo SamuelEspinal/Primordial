@@ -41,12 +41,12 @@ public final class EcosystemView extends JPanel {
             }
         });
     }
-    private double scale(){return Math.max(.01,Math.min(getWidth()/(double)Simulation.WIDTH,(getHeight()-50)/(double)Simulation.HEIGHT));}
-    private double offsetX(){return (getWidth()-Simulation.WIDTH*scale())/2;}
-    private double offsetY(){return 25+(getHeight()-50-Simulation.HEIGHT*scale())/2;}
+    private double scale(){return Math.max(.01,Math.min(getWidth()/(double)sim.width(),(getHeight()-50)/(double)sim.height()));}
+    private double offsetX(){return (getWidth()-sim.width()*scale())/2;}
+    private double offsetY(){return 25+(getHeight()-50-sim.height()*scale())/2;}
     private void interact(MouseEvent e){
         double x=(e.getX()-offsetX())/scale(),y=(e.getY()-offsetY())/scale();
-        if(x<0||x>Simulation.WIDTH||y<0||y>Simulation.HEIGHT)return;
+        if(x<0||x>sim.width()||y<0||y>sim.height())return;
         Tool active=painting?Tool.PLANTS:tool;
         if(active!=Tool.INSPECT){
             double spacing=active==Tool.ROCKS?brushRadius*.8:active==Tool.NEST||active==Tool.PLANT_SOURCE||active==Tool.PLANKTON_SOURCE?45:8;
@@ -77,11 +77,11 @@ public final class EcosystemView extends JPanel {
         Graphics2D background=(Graphics2D)graphics.create();smooth(background);background.setColor(UiTheme.HABITAT);background.fillRoundRect(0,0,getWidth(),getHeight(),16,16);background.dispose();
         Graphics2D g=(Graphics2D)graphics.create();smooth(g);g.clipRect(0,0,getWidth(),getHeight());
         g.translate(offsetX(),offsetY());g.scale(scale(),scale());
-        g.setPaint(new RadialGradientPaint(600,425,700,new float[]{0,1},new Color[]{new Color(27,56,40),UiTheme.HABITAT}));
-        g.fillRect(0,0,Simulation.WIDTH,Simulation.HEIGHT);
+        g.setPaint(new RadialGradientPaint(sim.width()/2f,sim.height()/2f,Math.max(sim.width(),sim.height())*.6f,new float[]{0,1},new Color[]{new Color(27,56,40),UiTheme.HABITAT}));
+        g.fillRect(0,0,sim.width(),sim.height());
         g.setColor(new Color(105,139,110,48));
-        for(int x=20;x<Simulation.WIDTH;x+=32)for(int y=20;y<Simulation.HEIGHT;y+=32)g.fill(new Ellipse2D.Double(x,y,1.4,1.4));
-        g.setColor(new Color(110,147,116,95));g.drawRect(8,8,Simulation.WIDTH-16,Simulation.HEIGHT-16);
+        for(int x=20;x<sim.width();x+=32)for(int y=20;y<sim.height();y+=32)g.fill(new Ellipse2D.Double(x,y,1.4,1.4));
+        g.setColor(new Color(110,147,116,95));g.drawRect(8,8,sim.width()-16,sim.height()-16);
         Simulation.Point patch=sim.foodPatch();
         g.setColor(new Color(153,184,109,9));g.fill(new Ellipse2D.Double(patch.x()-210,patch.y()-190,420,380));
         for(var nest:sim.nests){
@@ -107,7 +107,7 @@ public final class EcosystemView extends JPanel {
         }
         for(var egg:sim.eggs){
             var embryo=egg.embryo;g.setColor(UiTheme.EGG);g.fill(new Ellipse2D.Double(embryo.x-5,embryo.y-7,10,14));
-            g.setColor(UiTheme.PREY);g.setStroke(new BasicStroke(2));g.draw(new Arc2D.Double(embryo.x-9,embryo.y-10,18,20,90,-360.0*egg.incubation/Simulation.HATCH_TICKS,Arc2D.OPEN));
+            g.setColor(UiTheme.PREY);g.setStroke(new BasicStroke(2));g.draw(new Arc2D.Double(embryo.x-9,embryo.y-10,18,20,90,-360.0*egg.incubation/WorldConfig.ticks(sim.config.hatchSeconds),Arc2D.OPEN));
         }
         for(var c:sim.creatures){
             if(!c.alive)continue;
@@ -122,7 +122,7 @@ public final class EcosystemView extends JPanel {
             if(selected==c&&showSenses){
                 g.setColor(new Color(183,210,145,22));g.fill(new Ellipse2D.Double(c.x-c.vision,c.y-c.vision,c.vision*2,c.vision*2));
                 g.setColor(new Color(183,210,145,65));g.setStroke(new BasicStroke(1));g.draw(new Ellipse2D.Double(c.x-c.vision,c.y-c.vision,c.vision*2,c.vision*2));
-                for(int i=0;i<3;i++){double a=c.angle+(i==0?0:i==1?-.65:.65);double length=90*(1-c.inputs[7+i]);g.setColor(new Color(200,225,155,170));g.draw(new Line2D.Double(c.x,c.y,c.x+Math.cos(a)*length,c.y+Math.sin(a)*length));}
+                for(int i=0;i<3;i++){double a=c.angle+(i==0?0:i==1?-sim.config.obstacleAngle:sim.config.obstacleAngle);double length=sim.config.obstacleSense*(1-c.inputs[7+i]);g.setColor(new Color(200,225,155,170));g.draw(new Line2D.Double(c.x,c.y,c.x+Math.cos(a)*length,c.y+Math.sin(a)*length));}
                 g.setColor(new Color(207,229,152,160));double forward=c.inputs[0],side=c.inputs[1];
                 if(c.inputs[2]>0)g.draw(new Line2D.Double(c.x,c.y,c.x+(forward*Math.cos(c.angle)-side*Math.sin(c.angle))*c.vision*(1-c.inputs[2]),c.y+(forward*Math.sin(c.angle)+side*Math.cos(c.angle))*c.vision*(1-c.inputs[2])));
                 double dangerForward=c.inputs[3],dangerSide=c.inputs[4];g.setColor(new Color(236,141,99,180));
@@ -130,7 +130,7 @@ public final class EcosystemView extends JPanel {
             }
             if(selected==c){
                 g.setColor(new Color(246,255,222));g.setStroke(new BasicStroke(1.5f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND,1,new float[]{4,5},0));
-                g.draw(new Ellipse2D.Double(c.x-23,c.y-23,46,46));g.setFont(new Font(Font.SANS_SERIF,Font.BOLD,Math.max(13,(int)(11/scale()))));String tag="#"+c.id+" · C"+c.clusterId;double tx=c.x+28,ty=c.y-15;g.setColor(new Color(8,24,18,225));g.fill(new RoundRectangle2D.Double(tx-5,ty-g.getFontMetrics().getAscent()-4,g.getFontMetrics().stringWidth(tag)+10,g.getFontMetrics().getHeight()+8,8,8));g.setColor(new Color(246,255,222));g.drawString(tag,(float)tx,(float)ty);
+                g.draw(new Ellipse2D.Double(c.x-23,c.y-23,46,46));g.setFont(new Font(Font.SANS_SERIF,Font.BOLD,Math.max(13,(int)(11/scale()))));String tag=c.name+" · C"+c.clusterId;double tx=c.x+28,ty=c.y-15;g.setColor(new Color(8,24,18,225));g.fill(new RoundRectangle2D.Double(tx-5,ty-g.getFontMetrics().getAscent()-4,g.getFontMetrics().stringWidth(tag)+10,g.getFontMetrics().getHeight()+8,8,8));g.setColor(new Color(246,255,222));g.drawString(tag,(float)tx,(float)ty);
             }
             Graphics2D creature=(Graphics2D)g.create();creature.translate(c.x,c.y);creature.rotate(c.angle);
             creature.setStroke(new BasicStroke(1.4f));creature.setColor(new Color(color.getRed(),color.getGreen(),color.getBlue(),150));
@@ -155,8 +155,8 @@ public final class EcosystemView extends JPanel {
         double x=(event.getX()-offsetX())/scale(),y=(event.getY()-offsetY())/scale();
         if(tool!=Tool.INSPECT)return "<html><body style='width:270px'>"+UiHelp.tool(tool)+"</body></html>";
         for(var c:sim.creatures)if(c.alive&&Math.hypot(c.x-x,c.y-y)<Math.max(c.size+7,10/scale()))
-            return String.format("<html><b>%s #%d</b> · G%d · C%d<br>Diet: %s · Energy %.0f / %.0f<br>Size %.1f · Speed %.2f · Vision %.0f<br>Click to inspect brain and family.</html>",c.species==Simulation.Species.PREDATOR?"Hunter":"Prey",c.id,c.generation,c.clusterId,c.diet,Math.max(0,c.energy),c.capacity(),c.size,c.speed,c.vision);
-        for(var egg:sim.eggs)if(Math.hypot(egg.embryo.x-x,egg.embryo.y-y)<12/scale())return "<html><b>Egg</b> · Parent #"+egg.embryo.parentId+"<br>Incubation "+Math.min(100,egg.incubation*100/Simulation.HATCH_TICKS)+"% · "+(sim.inNest(x,y)?"Protected by a nest":"Exposed to hunters")+"</html>";
+            return String.format("<html><b>%s</b> · %s<br>%s · ID %d · G%d · C%d<br>Diet: %s · Energy %.0f / %.0f<br>Size %.1f · Speed %.2f · Vision %.0f<br>Click to inspect brain and family.</html>",c.name,c.clan,c.species==Simulation.Species.PREDATOR?"Hunter":"Prey",c.id,c.generation,c.clusterId,c.diet,Math.max(0,c.energy),c.capacity(),c.size,c.speed,c.vision);
+        for(var egg:sim.eggs)if(Math.hypot(egg.embryo.x-x,egg.embryo.y-y)<12/scale())return "<html><b>Egg</b> · Parent #"+egg.embryo.parentId+"<br>Incubation "+Math.min(100,egg.incubation*100/WorldConfig.ticks(sim.config.hatchSeconds))+"% · "+(sim.inNest(x,y)?"Protected by a nest":"Exposed to hunters")+"</html>";
         for(var f:sim.food)if(Math.hypot(f.x-x,f.y-y)<Math.max(7,6/scale()))return switch(f.type){case PLANT->"Lime circle: stationary plant. Grazers digest it best.";case PLANKTON->"Blue diamond: drifting plankton. Filter feeders digest it best.";case CARRION->"Purple square: carrion. Scavengers digest it best; it decays in 30 seconds.";};
         for(var rock:sim.obstacles)if(Math.hypot(rock.x()-x,rock.y()-y)<rock.radius())return "Solid rock blocks movement. Use Erase habitat to remove it.";
         for(var nest:sim.nests)if(Math.hypot(nest.x()-x,nest.y()-y)<nest.radius())return "Gold nest: eggs hatch twice as fast and are protected from hunters. Adults are not protected.";

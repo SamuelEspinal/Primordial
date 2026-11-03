@@ -18,7 +18,8 @@ public final class SimulationChecks {
         }
     }
     public static void run(){
-        neuralMemory();inheritance();reproduction();predation();sensesAndRocks();seasons();longRuns();persistence();benchmark();ecology();eggsAndNests();editor();worldPersistence();experiments();geneticGroups();render();
+        neuralMemory();inheritance();reproduction();predation();sensesAndRocks();seasons();longRuns();persistence();benchmark();ecology();eggsAndNests();editor();worldPersistence();experiments();geneticGroups();render();RoadmapChecks.run();
+        try{GettingStartedChecks.run();TooltipChecks.run();}catch(Exception ex){throw new AssertionError("UI behavior",ex);}
         System.out.println("PASS: recurrent memory, body inheritance, elitism, births, energy conservation, predation,");
         System.out.println("sensing, rocks, seasons, extinction, long runs, ancestry bounds, persistence, paired trials, diets, eggs, nests, editor, exact world continuation, experiments, genetic groups, and Java2D rendering.");
     }

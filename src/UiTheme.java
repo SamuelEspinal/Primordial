@@ -2,7 +2,12 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.plaf.basic.*;
 import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.text.StyleContext;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Dependency-free light/dark design system. Theme changes affect presentation only. */
 public final class UiTheme {
@@ -13,14 +18,22 @@ public final class UiTheme {
     public static boolean isDark(){return dark;}
     private static Color hex(int rgb){return new Color(rgb);}
     private static final Palette LIGHT=new Palette(hex(0xf3f4ed),hex(0xfbfcf7),hex(0xeff2e8),hex(0x223e34),hex(0x65765f),hex(0xd6ded0),hex(0x355c45),hex(0xf4f9e9),hex(0xe4ecd9),hex(0xdcebc9));
-    private static final Palette DARK=new Palette(hex(0x0e1916),hex(0x172923),hex(0x20382e),hex(0xe8f0e1),hex(0xa3b79f),hex(0x385246),hex(0xc5e99a),hex(0x173123),hex(0x2b4537),hex(0x344f3b));
+    private static final Palette DARK=new Palette(hex(0x0e1916),hex(0x172923),hex(0x20382e),hex(0xf2e7d3),hex(0xc4b9a4),hex(0x385246),hex(0xc5e99a),hex(0x173123),hex(0x2b4537),hex(0x344f3b));
+    private static final String BODY_FAMILY=fontFamily(Font.SANS_SERIF,"Segoe UI","Noto Sans","DejaVu Sans");
+    private static final String HEADING_FAMILY=fontFamily(Font.SERIF,"Georgia","Noto Serif","DejaVu Serif");
     public static final Color PREY=hex(0x71e2bc),PREDATOR=hex(0xff997f),PLANT=hex(0xc6e98c),PLANKTON=hex(0x82caff),CARRION=hex(0xd59ada),EGG=hex(0xffe1a0),NEST=hex(0xe2b86c),ROCK=hex(0x829c9a);
     public static final Color HABITAT=hex(0x102820),HABITAT_TEXT=hex(0xc1d9c2);
     private UiTheme() {}
+    private static String fontFamily(String fallback,String... choices){Set<String> installed=new HashSet<>(Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()));for(String choice:choices)if(installed.contains(choice))return choice;return fallback;}
+    // Swing's composite fonts keep arrows, symbols and international names readable too.
+    public static Font bodyFont(int style,int size){return StyleContext.getDefaultStyleContext().getFont(BODY_FAMILY,style,size);}
+    public static Font headingFont(int size){return StyleContext.getDefaultStyleContext().getFont(HEADING_FAMILY,Font.BOLD,size);}
+    public static void heading(JComponent component,int size){component.putClientProperty("typography","heading");component.setFont(headingFont(size));}
     public static void install(boolean night){
         dark=night;Palette p=palette();
-        Font font=new Font(Font.SANS_SERIF,Font.PLAIN,12);
-        for(String key:new String[]{"Label","Button","ToggleButton","CheckBox","ComboBox","TabbedPane","Table","TableHeader","Tree","ToolTip","Spinner","TextField","FormattedTextField","OptionPane","MenuItem","FileChooser","ProgressBar"}){
+        UIManager.put(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        Font font=bodyFont(Font.PLAIN,13);
+        for(String key:new String[]{"Label","Button","ToggleButton","CheckBox","ComboBox","TabbedPane","Table","TableHeader","Tree","List","ToolTip","Spinner","TextField","TextArea","FormattedTextField","OptionPane","MenuItem","FileChooser","ProgressBar"}){
             UIManager.put(key+".font",font);UIManager.put(key+".foreground",p.text);UIManager.put(key+".background",p.surface);
         }
         for(String key:new String[]{"Panel.background","Viewport.background","ScrollPane.background","OptionPane.background"})UIManager.put(key,p.surface);
@@ -33,6 +46,20 @@ public final class UiTheme {
         ToolTipManager.sharedInstance().setInitialDelay(300);ToolTipManager.sharedInstance().setDismissDelay(15000);
     }
     public static void toggle(){install(!dark);for(Window window:Window.getWindows()){apply(window);window.repaint();}}
+    /** Clear Swing's cached hover/timers and re-arm mouse-move detection, even if the pointer never left a control. */
+    public static void setTooltipsEnabled(boolean enabled,Component... roots){
+        ToolTipManager manager=ToolTipManager.sharedInstance();
+        Component source=roots.length>0?roots[0]:new JPanel();
+        manager.mousePressed(new MouseEvent(source,MouseEvent.MOUSE_PRESSED,System.currentTimeMillis(),0,-1,-1,0,false));
+        manager.setEnabled(enabled);
+        if(enabled){for(Component root:roots)rearmTooltips(root,manager);for(Window window:Window.getWindows())rearmTooltips(window,manager);}
+    }
+    private static void rearmTooltips(Component component,ToolTipManager manager){
+        if(component instanceof JComponent c&&Arrays.asList(c.getMouseListeners()).contains(manager)){
+            manager.unregisterComponent(c);c.removeMouseMotionListener(manager);manager.registerComponent(c);
+        }
+        if(component instanceof Container parent)for(Component child:parent.getComponents())rearmTooltips(child,manager);
+    }
     public static <T extends JComponent> T tip(T component,String description){component.setToolTipText("<html><body style='width:280px'>"+description+"</body></html>");component.getAccessibleContext().setAccessibleDescription(description.replaceAll("<[^>]*>"," "));return component;}
     public static void muted(JComponent component){component.putClientProperty("tone","muted");component.setForeground(palette().muted);}
     public static void primary(AbstractButton button){button.putClientProperty("primary",true);}
@@ -41,25 +68,27 @@ public final class UiTheme {
     private static void apply(Component component,boolean hero){
         Palette p=palette();
         if(component instanceof JComponent c){
+            c.putClientProperty(RenderingHints.KEY_TEXT_ANTIALIASING,RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             if(c.getClientProperty("tone")==null&&new Color(120,130,121).equals(c.getForeground()))c.putClientProperty("tone","muted");
             hero=hero||Boolean.TRUE.equals(c.getClientProperty("hero"));
             if(component instanceof JButton theme&&Boolean.TRUE.equals(c.getClientProperty("themeToggle")))theme.setText(dark?"Light mode":"Dark mode");
-            c.setForeground(hero?hex(0xecf5df):"muted".equals(c.getClientProperty("tone"))?p.muted:p.text);
+            c.setForeground(hero?hex(0xf2e7d3):"muted".equals(c.getClientProperty("tone"))?p.muted:p.text);
+            Font current=c.getFont();if(current!=null&&!Font.MONOSPACED.equals(current.getFamily()))c.setFont("heading".equals(c.getClientProperty("typography"))?headingFont(current.getSize()):bodyFont(current.getStyle(),Math.max(12,current.getSize())));
         }
         if(component instanceof Window w)w.setBackground(p.background);
         if(component instanceof JPanel panel){if(panel.isOpaque())panel.setBackground(Boolean.TRUE.equals(panel.getClientProperty("root"))?p.background:p.surface);}
         if(component instanceof EcosystemView)component.setBackground(HABITAT);
-        if(component instanceof JButton button&&!"ComboBox.arrowButton".equals(button.getName())){if(!(button.getUI() instanceof SoftButtonUI))button.setUI(new SoftButtonUI());button.setOpaque(false);button.setContentAreaFilled(false);button.setBorder(new EmptyBorder(9,13,9,13));button.setRolloverEnabled(true);button.setFont(new Font(Font.SANS_SERIF,Font.BOLD,11));}
+        if(component instanceof JButton button&&!"ComboBox.arrowButton".equals(button.getName())){if(!(button.getUI() instanceof SoftButtonUI))button.setUI(new SoftButtonUI());button.setOpaque(false);button.setContentAreaFilled(false);button.setBorder(new EmptyBorder(9,13,9,13));button.setRolloverEnabled(true);button.setFont(bodyFont(Font.BOLD,12));}
         else if(component instanceof JCheckBox check){check.setOpaque(false);check.setIcon(new CheckIcon());check.setSelectedIcon(new CheckIcon());check.setIconTextGap(7);check.setBorder(new EmptyBorder(5,2,5,4));check.setFocusPainted(false);}
-        if(component instanceof JComboBox<?> combo){if(!(combo.getUI() instanceof SoftComboUI))combo.setUI(new SoftComboUI());combo.setBackground(p.input);combo.setForeground(p.text);combo.setBorder(new RoundBorder());combo.setFont(new Font(Font.SANS_SERIF,Font.PLAIN,11));}
+        if(component instanceof JComboBox<?> combo){if(!(combo.getUI() instanceof SoftComboUI))combo.setUI(new SoftComboUI());combo.setBackground(p.input);combo.setForeground(p.text);combo.setBorder(new RoundBorder());combo.setFont(bodyFont(Font.PLAIN,12));}
         if(component instanceof JSlider slider){if(!(slider.getUI() instanceof SoftSliderUI))slider.setUI(new SoftSliderUI(slider));slider.setOpaque(false);slider.setForeground(p.accent);}
-        if(component instanceof JTabbedPane tabs){if(!(tabs.getUI() instanceof SoftTabsUI))tabs.setUI(new SoftTabsUI());tabs.setBackground(p.surface);tabs.setForeground(p.muted);tabs.setFont(new Font(Font.SANS_SERIF,Font.BOLD,11));}
+        if(component instanceof JTabbedPane tabs){if(!(tabs.getUI() instanceof SoftTabsUI))tabs.setUI(new SoftTabsUI());tabs.setBackground(p.surface);tabs.setForeground(p.muted);tabs.setFont(bodyFont(Font.BOLD,12));}
         if(component instanceof JScrollPane scroll){scroll.setBorder(BorderFactory.createEmptyBorder());scroll.getViewport().setBackground(p.surface);}
         if(component instanceof JViewport viewport)viewport.setBackground(p.surface);
         if(component instanceof JScrollBar bar){if(!(bar.getUI() instanceof SoftScrollUI))bar.setUI(new SoftScrollUI());bar.setPreferredSize(new Dimension(10,10));bar.setBackground(p.surface);}
         if(component instanceof javax.swing.text.JTextComponent text){text.setBackground(p.input);text.setForeground(p.text);text.setCaretColor(p.text);text.setSelectionColor(p.selected);text.setSelectedTextColor(p.text);if(text instanceof JTextArea)text.setBorder(new EmptyBorder(10,10,10,10));else if(text.getParent() instanceof JSpinner.DefaultEditor)text.setBorder(new EmptyBorder(6,7,6,7));else text.setBorder(new CompoundBorder(new RoundBorder(),new EmptyBorder(5,7,5,7)));}
         if(component instanceof JSpinner spinner){if(!(spinner.getUI() instanceof SoftSpinnerUI))spinner.setUI(new SoftSpinnerUI());spinner.setBackground(p.input);spinner.setBorder(new RoundBorder());}
-        if(component instanceof JTable table){table.setBackground(p.surface);table.setForeground(p.text);table.setSelectionBackground(p.selected);table.setSelectionForeground(p.text);table.setGridColor(p.line);table.setShowVerticalLines(false);table.setRowHeight(29);table.getTableHeader().setBackground(p.input);table.getTableHeader().setForeground(p.muted);table.getTableHeader().setFont(new Font(Font.SANS_SERIF,Font.BOLD,10));}
+        if(component instanceof JTable table){table.setBackground(p.surface);table.setForeground(p.text);table.setSelectionBackground(p.selected);table.setSelectionForeground(p.text);table.setGridColor(p.line);table.setShowVerticalLines(false);table.setRowHeight(29);table.getTableHeader().setBackground(p.input);table.getTableHeader().setForeground(p.muted);table.getTableHeader().setFont(bodyFont(Font.BOLD,12));}
         if(component instanceof JTree tree){tree.setBackground(p.surface);tree.setForeground(p.text);tree.setRowHeight(26);DefaultTreeCellRenderer r=new DefaultTreeCellRenderer();r.setBackgroundNonSelectionColor(p.surface);r.setBackgroundSelectionColor(p.selected);r.setTextNonSelectionColor(p.text);r.setTextSelectionColor(p.text);r.setBorderSelectionColor(p.line);r.setLeafIcon(null);r.setClosedIcon(null);r.setOpenIcon(null);tree.setCellRenderer(r);}
         if(component instanceof JProgressBar progress){if(!(progress.getUI() instanceof SoftProgressUI))progress.setUI(new SoftProgressUI());progress.setForeground(p.accent);progress.setBackground(p.input);progress.setBorder(new EmptyBorder(2,2,2,2));}
         if(component instanceof Container parent)for(Component child:parent.getComponents())apply(child,hero);
@@ -77,7 +106,7 @@ public final class UiTheme {
         @Override public void paint(Graphics graphics,JComponent component){AbstractButton button=(AbstractButton)component;Graphics2D g=(Graphics2D)graphics.create();EcosystemView.smooth(g);Palette p=palette();boolean primary=Boolean.TRUE.equals(button.getClientProperty("primary"));boolean selected=button.isSelected()||button.getModel().isPressed();
             Color bg=primary?p.accent:selected?p.selected:button.getModel().isRollover()?p.hover:p.input;g.setColor(bg);g.fillRoundRect(0,0,button.getWidth()-1,button.getHeight()-1,12,12);g.setColor(button.hasFocus()?p.accent:p.line);g.drawRoundRect(0,0,button.getWidth()-1,button.getHeight()-1,12,12);g.dispose();button.setForeground(!button.isEnabled()?p.muted:primary?p.accentText:p.text);super.paint(graphics,component);}
         @Override protected void paintButtonPressed(Graphics g,AbstractButton b){}
-        @Override protected void paintText(Graphics g,AbstractButton b,Rectangle r,String text){g.setColor(b.isEnabled()?b.getForeground():palette().muted);g.setFont(b.getFont());BasicGraphicsUtils.drawStringUnderlineCharAt(g,text,-1,r.x,r.y+g.getFontMetrics().getAscent());}
+        @Override protected void paintText(Graphics graphics,AbstractButton b,Rectangle r,String text){Graphics2D g=(Graphics2D)graphics.create();EcosystemView.smooth(g);g.setColor(b.isEnabled()?b.getForeground():palette().muted);g.setFont(b.getFont());BasicGraphicsUtils.drawStringUnderlineCharAt(g,text,-1,r.x,r.y+g.getFontMetrics().getAscent());g.dispose();}
     }
     private static final class CheckIcon implements Icon {
         public int getIconWidth(){return 16;}public int getIconHeight(){return 16;}
@@ -110,7 +139,7 @@ public final class UiTheme {
         @Override protected void paintTabBorder(Graphics g,int placement,int index,int x,int y,int w,int h,boolean selected){}
         @Override protected void paintContentBorder(Graphics g,int placement,int selected){}
         @Override protected void paintFocusIndicator(Graphics g,int placement,Rectangle[] rects,int index,Rectangle icon,Rectangle text,boolean selected){}
-        @Override protected void paintText(Graphics g,int placement,Font font,FontMetrics metrics,int index,String title,Rectangle text,boolean selected){g.setFont(font);g.setColor(selected?palette().text:palette().muted);g.drawString(title,text.x,text.y+metrics.getAscent());}
+        @Override protected void paintText(Graphics graphics,int placement,Font font,FontMetrics metrics,int index,String title,Rectangle text,boolean selected){Graphics2D g=(Graphics2D)graphics.create();EcosystemView.smooth(g);g.setFont(font);g.setColor(selected?palette().text:palette().muted);g.drawString(title,text.x,text.y+metrics.getAscent());g.dispose();}
     }
     public static final class Stack extends JPanel implements Scrollable {
         public Stack(){setOpaque(false);setLayout(new BoxLayout(this,BoxLayout.Y_AXIS));}

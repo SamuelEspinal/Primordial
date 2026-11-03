@@ -29,6 +29,10 @@ public final class UiHelp {
         case 3->"Mean body radius among living creatures. Larger bodies can store more energy but cost more to maintain.";
         case 4->"Mean inherited maximum swimming speed. Actual speed is controlled by the brain; faster movement consumes more energy.";
         case 5->"Mean inherited sensing range. Better vision detects targets farther away, but consumes more energy.";
+        case 7->"Prey mean natural completed lifespan in seconds. Administrative removals and selection replacements are excluded.";
+        case 8->"Hunter mean natural completed lifespan in seconds. Administrative removals and selection replacements are excluded.";
+        case 9->"Prey meal energy recovered divided by metabolic and incubation expenditure. Reproductive investment is excluded.";
+        case 10->"Hunter meal energy recovered divided by metabolic and incubation expenditure. Reproductive investment is excluded.";
         default->"Cumulative births (including the initial population) and deaths. Egg laying is not counted as a birth until the egg hatches.";
     };}
     public static <T> void choices(JComboBox<T> combo,IntFunction<String> explanation){

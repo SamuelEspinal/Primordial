@@ -1,5 +1,7 @@
 # Primordial project audit
 
+> Historical baseline before the roadmap implementation. See [the implementation status](ROADMAP.md) for current controls, save migration, and fresh-seed evaluation, including failures of the coexistence preset.
+
 Audit date: November 2, 2026. Scope: all Java sources, project setup, existing checks, real Swing renders, and seeded headless simulation runs. This is an audit of the current implementation; gameplay constants and defaults were not changed. The added survival runner is an observation tool.
 
 ## Overall assessment

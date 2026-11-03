@@ -21,9 +21,9 @@ public final class SpeciesTracker implements Serializable {
     }
     public static double distance(Simulation.Genome a,Simulation.Genome b){
         if(a.species()!=b.species())return Double.POSITIVE_INFINITY;
-        double[] aw=a.weights(),bw=b.weights();double sum=0;for(int i=0;i<aw.length;i++)sum+=(aw[i]-bw[i])*(aw[i]-bw[i]);
+        double sum=0;for(int i=0;i<Simulation.WEIGHT_COUNT;i++){double delta=a.weightAt(i)-b.weightAt(i);sum+=delta*delta;}
         double body=(Math.abs(a.size()-b.size())/7+Math.abs(a.speed()-b.speed())/2.6+Math.abs(a.vision()-b.vision())/290)/3;
-        return Math.sqrt(sum/aw.length)*.65+body*.25+(a.diet()==b.diet()?0:.22);
+        return Math.sqrt(sum/Simulation.WEIGHT_COUNT)*.65+body*.25+(a.diet()==b.diet()?0:.22);
     }
     public Map<Integer,Integer> livingCounts(Simulation simulation){
         Map<Integer,Integer> result=new TreeMap<>();for(var c:simulation.creatures)if(c.alive)result.merge(c.clusterId,1,Integer::sum);return result;
