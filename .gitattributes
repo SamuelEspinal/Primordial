@@ -1,0 +1,7 @@
+# Normalize text in Git and keep source/documentation consistent across platforms.
+* text=auto eol=lf
+*.java text eol=lf
+*.md text eol=lf
+*.csv text eol=lf
+*.xml text eol=lf
+*.iml text eol=lf

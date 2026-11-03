@@ -1,0 +1,30 @@
+# Generated Java output and build artifacts
+/out/
+/build/
+/dist/
+*.class
+
+# Personal IntelliJ state (shared project/module configuration stays tracked)
+/.idea/workspace.xml
+/.idea/tasks.xml
+/.idea/shelf/
+/.idea/httpRequests/
+/.idea/dataSources/
+/.idea/dataSources.local.xml
+/.idea/dictionaries/
+
+# Personal simulation saves and exported runs
+*.world
+*.brain
+/saves/
+/checkpoints/
+/exports/
+
+# Local credentials, temporary files, and operating-system metadata
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+Thumbs.db
+.DS_Store
